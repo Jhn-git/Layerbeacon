@@ -1,0 +1,9 @@
+## Interface 11555
+## Title Layerbounce
+## Notes Responds to requests for layers and invites players.
+## Author Jhn
+## Version 1.0
+## SavedVariables: LayerbounceSavedVariables
+## SavedVariablesPerCharacter: LayerbounceCharacterSavedVariables
+
+Layerbounce.lua
