@@ -4,9 +4,13 @@ Layerbounce.Main = Layerbounce.Main or {}
 
 local addonName, _ = ...
 
--- Toggle addon
+--------------------------------------------------------------------------------
+-- ToggleAddon
+--------------------------------------------------------------------------------
 function Layerbounce.Main.ToggleAddon(minimapButton)
-    _G.LayerbounceSavedVariables.isAddonActive = not _G.LayerbounceSavedVariables.isAddonActive
+    _G.LayerbounceSavedVariables.isAddonActive =
+        not _G.LayerbounceSavedVariables.isAddonActive
+
     Layerbounce.Handlers.DebugPrintf(
         "Layerbounce",
         "Minimap button clicked. Addon active state: %s",
@@ -20,7 +24,9 @@ function Layerbounce.Main.ToggleAddon(minimapButton)
     end
 end
 
--- Create the minimap button
+--------------------------------------------------------------------------------
+-- CreateMinimapButton
+--------------------------------------------------------------------------------
 function Layerbounce.Main.CreateMinimapButton()
     local minimapButton = CreateFrame("Button", "LayerbounceMinimapButton", Minimap)
     minimapButton:SetSize(32, 32)
@@ -54,13 +60,14 @@ function Layerbounce.Main.CreateMinimapButton()
     minimapButton:SetMovable(true)
     minimapButton:EnableMouse(true)
     minimapButton:RegisterForDrag("LeftButton")
-    minimapButton:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    minimapButton:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
     minimapButton:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        -- Optionally save new position
     end)
 
-    -- Toggle on click
+    -- Click => Toggle
     minimapButton:SetScript("OnClick", function(self)
         Layerbounce.Main.ToggleAddon(self)
     end)

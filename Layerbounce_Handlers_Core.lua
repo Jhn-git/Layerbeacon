@@ -2,20 +2,22 @@
 Layerbounce = Layerbounce or {}
 Layerbounce.Handlers = Layerbounce.Handlers or {}
 
--- ---------------------------------------------------------------------------
--- State variables
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- State Variables
+-------------------------------------------------------------------------------
+Layerbounce.Handlers.priorityQueue        = {} -- for "layer X" where X == current layer
+Layerbounce.Handlers.normalQueue          = {} -- for generic "layer" requests
+
 Layerbounce.Handlers.ignoreList           = {}
 Layerbounce.Handlers.layerText            = nil
-Layerbounce.Handlers.partyQueue           = {}
-Layerbounce.Handlers.partyMembers         = {}
-Layerbounce.Handlers.leftPartyList        = {}
-Layerbounce.Handlers.declinedInviteList   = {}
+Layerbounce.Handlers.partyMembers         = {} -- Tracks join times (for AFK)
+Layerbounce.Handlers.leftPartyList        = {} -- We'll store a timestamp when they left
+Layerbounce.Handlers.declinedInviteList   = {} -- We'll store a timestamp when they declined
 Layerbounce.Handlers.lastNotificationTime = 0
 
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility: DebugPrintf
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 function Layerbounce.Handlers.DebugPrintf(...)
     local status, res = pcall(string.format, ...)
     if status and DLAPI then
@@ -23,9 +25,9 @@ function Layerbounce.Handlers.DebugPrintf(...)
     end
 end
 
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility: UpdateButtonPosition
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 function Layerbounce.Handlers.UpdateButtonPosition(button, angle, radius)
     local radians = math.rad(angle)
     local xOffset = math.cos(radians) * radius
@@ -33,10 +35,9 @@ function Layerbounce.Handlers.UpdateButtonPosition(button, angle, radius)
     button:SetPoint("CENTER", Minimap, "CENTER", xOffset, yOffset)
 end
 
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility: ExtractLayerText
---   Attempts to read from MinimapLayerFrame.fs if it exists
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 function Layerbounce.Handlers.ExtractLayerText()
     Layerbounce.Handlers.DebugPrintf("Attempting to extract layer text...")
     if _G["MinimapLayerFrame"] and _G["MinimapLayerFrame"].fs then
@@ -55,25 +56,23 @@ function Layerbounce.Handlers.ExtractLayerText()
     return false
 end
 
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility: IsPlayerInOurGroup
---   Checks if player is in group (party or raid)
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 function Layerbounce.Handlers.IsPlayerInOurGroup(playerName)
     if IsInRaid(LE_PARTY_CATEGORY_HOME) then
         for i = 1, GetNumGroupMembers() do
-            local name = GetRaidRosterInfo(i)  -- works in raid
+            local name = GetRaidRosterInfo(i)  -- works in a raid
             if name == playerName then
                 return true
             end
         end
     elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        -- "player" = yourself; "party1".."party4" = the rest
         if UnitExists("player") and GetUnitName("player", true) == playerName then
             return true
         end
         for i = 1, 4 do
-            local unitID = "party" .. i
+            local unitID = "party"..i
             if UnitExists(unitID) then
                 local name = GetUnitName(unitID, true)
                 if name == playerName then
@@ -85,21 +84,20 @@ function Layerbounce.Handlers.IsPlayerInOurGroup(playerName)
     return false
 end
 
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Utility: WaitForPlayerToJoin
---   Checks every second (up to 10s) if player joined group
--- ---------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 function Layerbounce.Handlers.WaitForPlayerToJoin(playerName, retries)
     retries = retries or 0
     if retries > 10 then
-        Layerbounce.Handlers.DebugPrintf("Player %s did not join after 10 seconds, giving up.", playerName)
+        Layerbounce.Handlers.DebugPrintf("Player %s did not join after 10s, giving up.", playerName)
         return
     end
 
     if Layerbounce.Handlers.IsPlayerInOurGroup(playerName) then
         if Layerbounce.Handlers.ExtractLayerText() then
             Layerbounce.Handlers.DebugPrintf("Announcing layer %s to party.", Layerbounce.Handlers.layerText)
-            Layerbounce.Handlers.lastNotificationTime = GetTime() -- Update cooldown
+            Layerbounce.Handlers.lastNotificationTime = GetTime()
             SendChatMessage("layer " .. Layerbounce.Handlers.layerText, "PARTY")
         end
     else
@@ -107,4 +105,26 @@ function Layerbounce.Handlers.WaitForPlayerToJoin(playerName, retries)
             Layerbounce.Handlers.WaitForPlayerToJoin(playerName, retries + 1)
         end)
     end
+end
+
+-------------------------------------------------------------------------------
+-- Utility: CheckLayerPriority
+-------------------------------------------------------------------------------
+function Layerbounce.Handlers.CheckLayerPriority(msg, currentLayer)
+    local lowerMsg = string.lower(msg or "")
+    if not string.find(lowerMsg, "layer") then
+        return nil
+    end
+
+    local layersMentioned = string.match(lowerMsg, "layer%s+([%d,]+)")
+    if layersMentioned then
+        for numberString in string.gmatch(layersMentioned, "%d+") do
+            local num = tonumber(numberString)
+            if num and tostring(num) == tostring(currentLayer) then
+                return "priority"
+            end
+        end
+    end
+
+    return "normal"
 end

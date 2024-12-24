@@ -1,6 +1,3 @@
-################################################################################
-# Layerbounce.toc (example .toc file)
-################################################################################
 ## Interface: 11555
 ## Title: Layerbounce
 ## Notes: Responds to requests for layers and invites players.
@@ -11,7 +8,7 @@
 
 Layerbounce_Config.lua
 Layerbounce_Handlers_Core.lua
-Layerbounce_Handlers_Events.lua
 Layerbounce_Handlers_Invite.lua
+Layerbounce_Handlers_Events.lua
 Layerbounce_Handlers_AFK.lua
 Layerbounce.lua

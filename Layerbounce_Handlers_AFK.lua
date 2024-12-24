@@ -8,16 +8,19 @@ function Layerbounce.Handlers.CheckAFKAndKick()
 
     for playerName, joinTime in pairs(Layerbounce.Handlers.partyMembers) do
         if not UnitInParty(playerName) then
-            -- Player left
+            -- The player left the group
             Layerbounce.Handlers.DebugPrintf("Player %s left. Removing from tracking.", playerName)
             Layerbounce.Handlers.partyMembers[playerName] = nil
-            Layerbounce.Handlers.leftPartyList[playerName] = true
+
+            -- Record the timestamp so they're on cooldown for 20 min
+            Layerbounce.Handlers.leftPartyList[playerName] = GetTime()
+
         elseif currentTime - joinTime > Layerbounce.Config.AFK_TIMEOUT then
-            -- AFK too long
+            -- Player is AFK too long
             Layerbounce.Handlers.DebugPrintf("Player %s AFK too long. Kicking...", playerName)
             UninviteUnit(playerName)
             Layerbounce.Handlers.partyMembers[playerName] = nil
-            Layerbounce.Handlers.leftPartyList[playerName] = true
+            Layerbounce.Handlers.leftPartyList[playerName] = GetTime()
             Layerbounce.Handlers.DebugPrintf("Removed %s for AFK.", playerName)
         end
     end
