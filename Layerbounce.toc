@@ -7,8 +7,8 @@
 ## SavedVariablesPerCharacter: LayerbounceCharacterSavedVariables
 
 Layerbounce_Config.lua
+Layerbounce_Main.lua
 Layerbounce_Handlers_Core.lua
+Layerbounce_Handlers_AFK.lua
 Layerbounce_Handlers_Invite.lua
 Layerbounce_Handlers_Events.lua
-Layerbounce_Handlers_AFK.lua
-Layerbounce.lua

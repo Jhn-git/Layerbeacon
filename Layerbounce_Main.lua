@@ -1,4 +1,4 @@
--- Layerbounce.lua
+-- Layerbounce_Main.lua
 Layerbounce = Layerbounce or {}
 Layerbounce.Main = Layerbounce.Main or {}
 
@@ -74,8 +74,3 @@ function Layerbounce.Main.CreateMinimapButton()
 
     return minimapButton
 end
-
---------------------------------------------------------------------------------
--- Kick off event registration
---------------------------------------------------------------------------------
-Layerbounce.Handlers.SetupEventHandlers(addonName)

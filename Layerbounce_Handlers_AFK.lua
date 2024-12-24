@@ -13,14 +13,14 @@ function Layerbounce.Handlers.CheckAFKAndKick()
             Layerbounce.Handlers.partyMembers[playerName] = nil
 
             -- Record the timestamp so they're on cooldown for 20 min
-            Layerbounce.Handlers.leftPartyList[playerName] = GetTime()
+            Layerbounce.Handlers.leftPartyList[playerName] = currentTime
 
         elseif currentTime - joinTime > Layerbounce.Config.AFK_TIMEOUT then
             -- Player is AFK too long
             Layerbounce.Handlers.DebugPrintf("Player %s AFK too long. Kicking...", playerName)
             UninviteUnit(playerName)
             Layerbounce.Handlers.partyMembers[playerName] = nil
-            Layerbounce.Handlers.leftPartyList[playerName] = GetTime()
+            Layerbounce.Handlers.leftPartyList[playerName] = currentTime
             Layerbounce.Handlers.DebugPrintf("Removed %s for AFK.", playerName)
         end
     end

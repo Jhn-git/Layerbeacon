@@ -5,10 +5,6 @@ Layerbounce.Handlers = Layerbounce.Handlers or {}
 -------------------------------------------------------------------------------
 -- State Variables
 -------------------------------------------------------------------------------
-Layerbounce.Handlers.priorityQueue        = {} -- for "layer X" where X == current layer
-Layerbounce.Handlers.normalQueue          = {} -- for generic "layer" requests
-
-Layerbounce.Handlers.ignoreList           = {}
 Layerbounce.Handlers.layerText            = nil
 Layerbounce.Handlers.partyMembers         = {} -- Tracks join times (for AFK)
 Layerbounce.Handlers.leftPartyList        = {} -- We'll store a timestamp when they left
@@ -19,10 +15,16 @@ Layerbounce.Handlers.lastNotificationTime = 0
 -- Utility: DebugPrintf
 -------------------------------------------------------------------------------
 function Layerbounce.Handlers.DebugPrintf(...)
-    local status, res = pcall(string.format, ...)
-    if status and DLAPI then
-        DLAPI.DebugLog("Layerbounce", res)
-    end
+    -- If you have a debug logging library, you can keep this:
+    -- if DLAPI then
+    --     local status, res = pcall(string.format, ...)
+    --     if status and res then
+    --         DLAPI.DebugLog("Layerbounce", res)
+    --     end
+    -- end
+
+    -- Otherwise, just a simple print:
+    -- print(string.format(...))
 end
 
 -------------------------------------------------------------------------------
@@ -68,9 +70,11 @@ function Layerbounce.Handlers.IsPlayerInOurGroup(playerName)
             end
         end
     elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
+        -- Check yourself
         if UnitExists("player") and GetUnitName("player", true) == playerName then
             return true
         end
+        -- Check party
         for i = 1, 4 do
             local unitID = "party"..i
             if UnitExists(unitID) then
@@ -105,26 +109,4 @@ function Layerbounce.Handlers.WaitForPlayerToJoin(playerName, retries)
             Layerbounce.Handlers.WaitForPlayerToJoin(playerName, retries + 1)
         end)
     end
-end
-
--------------------------------------------------------------------------------
--- Utility: CheckLayerPriority
--------------------------------------------------------------------------------
-function Layerbounce.Handlers.CheckLayerPriority(msg, currentLayer)
-    local lowerMsg = string.lower(msg or "")
-    if not string.find(lowerMsg, "layer") then
-        return nil
-    end
-
-    local layersMentioned = string.match(lowerMsg, "layer%s+([%d,]+)")
-    if layersMentioned then
-        for numberString in string.gmatch(layersMentioned, "%d+") do
-            local num = tonumber(numberString)
-            if num and tostring(num) == tostring(currentLayer) then
-                return "priority"
-            end
-        end
-    end
-
-    return "normal"
 end
