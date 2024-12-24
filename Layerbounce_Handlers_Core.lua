@@ -23,7 +23,7 @@ function Layerbounce.Handlers.DebugPrintf(...)
     --     end
     -- end
 
-    -- Otherwise, just a simple print:
+    -- Otherwise, just comment in a simple print for debugging:
     -- print(string.format(...))
 end
 

@@ -12,7 +12,7 @@ function Layerbounce.Handlers.CheckAFKAndKick()
             Layerbounce.Handlers.DebugPrintf("Player %s left. Removing from tracking.", playerName)
             Layerbounce.Handlers.partyMembers[playerName] = nil
 
-            -- Record the timestamp so they're on cooldown for 20 min
+            -- Record the timestamp so they're on cooldown
             Layerbounce.Handlers.leftPartyList[playerName] = currentTime
 
         elseif currentTime - joinTime > Layerbounce.Config.AFK_TIMEOUT then

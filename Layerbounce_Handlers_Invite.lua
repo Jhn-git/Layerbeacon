@@ -21,7 +21,9 @@ function Layerbounce.Handlers.InviteAndNotify(sender)
 
     local currentTime = GetTime()
     -- Avoid spamming invites too fast
-    if currentTime - Layerbounce.Handlers.lastNotificationTime < Layerbounce.Config.NOTIFICATION_COOLDOWN then
+    if (currentTime - Layerbounce.Handlers.lastNotificationTime)
+         < Layerbounce.Config.NOTIFICATION_COOLDOWN
+    then
         Layerbounce.Handlers.DebugPrintf("Notification cooldown. Skipping invite for %s.", sender)
         return
     end
@@ -41,7 +43,7 @@ function Layerbounce.Handlers.InviteAndNotify(sender)
     C_PartyInfo.InviteUnit(playerName)
     Layerbounce.Handlers.partyMembers[playerName] = currentTime
 
-    -- Optionally, you can whisper them your layer if you want:
+    -- Whisper them our layer (optional)
     SendChatMessage(
         "I am on layer " .. (Layerbounce.Handlers.layerText or "Unknown") .. ". Inviting you now!",
         "WHISPER", nil, playerName
@@ -80,7 +82,10 @@ end
 function Layerbounce.Handlers.HandleDeclinedInvite(sender)
     local currentTime = time() -- absolute timestamp
     local cooldown = Layerbounce.Config.LEAVE_DECLINE_COOLDOWN or 1200
-    Layerbounce.Handlers.DebugPrintf("Player %s declined the invite at %s.", sender, date("%Y-%m-%d %H:%M:%S", currentTime))
+    Layerbounce.Handlers.DebugPrintf(
+        "Player %s declined the invite at %s.",
+        sender, date("%Y-%m-%d %H:%M:%S", currentTime)
+    )
 
     -- Store the current timestamp in the declined list
     Layerbounce.Handlers.declinedInviteList[sender] = currentTime
