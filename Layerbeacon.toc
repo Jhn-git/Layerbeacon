@@ -1,0 +1,18 @@
+## Interface: 11555
+## Title: Layerbeacon
+## Notes: Responds to requests for layers and invites players.
+## Author: Jhn
+## Version: 1.1
+## SavedVariables: LayerbeaconSavedVariables
+## SavedVariablesPerCharacter: LayerbeaconCharacterSavedVariables
+## Dependencies: NovaWorldBuffs
+## OptionalDeps: DebugLog
+
+Layerbeacon_Config.lua
+Layerbeacon_Handlers_Core.lua
+Layerbeacon_Handlers_AFK.lua
+Layerbeacon_Handlers_Invite.lua
+Layerbeacon_Handlers_Events.lua
+Layerbeacon_Minimap.lua
+Layerbeacon_Commands.lua
+Layerbeacon.lua

@@ -1,12 +1,12 @@
 local addonName, _ = ...
 
-Layerbounce = Layerbounce or {}
-Layerbounce.Minimap = Layerbounce.Minimap or {}
+Layerbeacon = Layerbeacon or {}
+Layerbeacon.Minimap = Layerbeacon.Minimap or {}
 
 -------------------------------------------------------------------------------
 -- Update Button Position
 -------------------------------------------------------------------------------
-function Layerbounce.Minimap.UpdateButtonPosition(button, angle, radius)
+function Layerbeacon.Minimap.UpdateButtonPosition(button, angle, radius)
     angle = angle or 0
     radius = radius or 80
 
@@ -21,24 +21,24 @@ end
 -------------------------------------------------------------------------------
 -- Update Minimap Button Texture
 -------------------------------------------------------------------------------
-function Layerbounce.Minimap.UpdateButtonTexture(minimapButton)
+function Layerbeacon.Minimap.UpdateButtonTexture(minimapButton)
     local texturePath
 
     -- Ensure saved variables exist
-    _G.LayerbounceSavedVariables = _G.LayerbounceSavedVariables or {}
-    if _G.LayerbounceSavedVariables.isAddonActive then
-        if Layerbounce.Handlers.ExtractLayerText() then
-            local layer = tonumber(Layerbounce.Handlers.layerText)
+    _G.LayerbeaconSavedVariables = _G.LayerbeaconSavedVariables or {}
+    if _G.LayerbeaconSavedVariables.isAddonActive then
+        if Layerbeacon.Handlers.ExtractLayerText() then
+            local layer = tonumber(Layerbeacon.Handlers.layerText)
             if layer and layer >= 1 and layer <= 9 then
-                texturePath = "Interface/AddOns/Layerbounce/textures/Layerbounce_" .. layer .. ".tga"
+                texturePath = "Interface/AddOns/Layerbeacon/textures/Layerbeacon_" .. layer .. ".tga"
             else
-                texturePath = "Interface/AddOns/Layerbounce/textures/Layerbounce_question.tga"
+                texturePath = "Interface/AddOns/Layerbeacon/textures/Layerbeacon_question.tga"
             end
         else
-            texturePath = "Interface/AddOns/Layerbounce/textures/Layerbounce_question.tga"
+            texturePath = "Interface/AddOns/Layerbeacon/textures/Layerbeacon_question.tga"
         end
     else
-        texturePath = "Interface/AddOns/Layerbounce/textures/Layerbounce_question.tga"
+        texturePath = "Interface/AddOns/Layerbeacon/textures/Layerbeacon_question.tga"
     end
 
     minimapButton:SetNormalTexture(texturePath)
@@ -48,25 +48,25 @@ end
 -------------------------------------------------------------------------------
 -- Create Minimap Button
 -------------------------------------------------------------------------------
-function Layerbounce.Minimap.CreateButton()
-    local minimapButton = CreateFrame("Button", "LayerbounceMinimapButton", Minimap)
+function Layerbeacon.Minimap.CreateButton()
+    local minimapButton = CreateFrame("Button", "LayerbeaconMinimapButton", Minimap)
     minimapButton:SetSize(32, 32)
     minimapButton:SetFrameStrata("MEDIUM")
     minimapButton:SetFrameLevel(8)
     minimapButton:SetHighlightTexture("Interface/Minimap/UI-Minimap-ZoomButton-Highlight")
 
-    Layerbounce.Minimap.UpdateButtonTexture(minimapButton)
+    Layerbeacon.Minimap.UpdateButtonTexture(minimapButton)
 
-    Layerbounce.Minimap.UpdateButtonPosition(
+    Layerbeacon.Minimap.UpdateButtonPosition(
         minimapButton,
-        Layerbounce.Config.DEFAULT_ANGLE,
-        Layerbounce.Config.RADIUS
+        Layerbeacon.Config.DEFAULT_ANGLE,
+        Layerbeacon.Config.RADIUS
     )
 
     -- Button scripts
     minimapButton:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("Layerbounce")
+        GameTooltip:SetText("Layerbeacon")
         GameTooltip:Show()
     end)
     minimapButton:SetScript("OnLeave", function(self)
@@ -84,11 +84,11 @@ function Layerbounce.Minimap.CreateButton()
     end)
 
     minimapButton:SetScript("OnClick", function(self)
-        Layerbounce.Main.ToggleAddon(self)
+        Layerbeacon.Main.ToggleAddon(self)
     end)
 
     -- Store reference
-    Layerbounce.Minimap.Button = minimapButton
+    Layerbeacon.Minimap.Button = minimapButton
 
     return minimapButton
 end
@@ -96,10 +96,10 @@ end
 -------------------------------------------------------------------------------
 -- Initialization Stub
 -------------------------------------------------------------------------------
-function Layerbounce.Minimap.Initialize()
+function Layerbeacon.Minimap.Initialize()
     -- Create the minimap button or do any additional minimap-related setup here
-    Layerbounce.Minimap.CreateButton()
+    Layerbeacon.Minimap.CreateButton()
 
     -- If you need to do anything else when the addon loads, do it here
-    Layerbounce.Handlers.DebugPrintf("Layerbounce.Minimap.Initialize called.")
+    Layerbeacon.Handlers.DebugPrintf("Layerbeacon.Minimap.Initialize called.")
 end

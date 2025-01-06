@@ -1,6 +1,6 @@
-# Layerbounce
+# Layerbeacon
 
-Layerbounce is a World of Warcraft (WoW) addon designed to simplify group management and improve layer coordination. With automation for invitations, AFK management, and a minimap button, Layerbounce makes helping others layer swap easier.
+Layerbeacon is a World of Warcraft (WoW) addon designed to simplify group management and improve layer coordination. With automation for invitations, AFK management, and a minimap button, Layerbeacon makes helping others layer swap easier.
 
 ## Features
 
@@ -27,7 +27,7 @@ Layerbounce is a World of Warcraft (WoW) addon designed to simplify group manage
 
 ## Installation
 
-1. Download Layerbounce from CurseForge.
+1. Download Layerbeacon from CurseForge.
 2. Extract or move the addon folder into your WoW AddOns directory:
    ```
    ...\World of Warcraft\_classic_era_\Interface\AddOns\
@@ -36,7 +36,7 @@ Layerbounce is a World of Warcraft (WoW) addon designed to simplify group manage
 
 ## Usage
 
-- **Toggling Addon**: Use the minimap button to enable or disable Layerbounce.
+- **Toggling Addon**: Use the minimap button to enable or disable Layerbeacon.
 - **Invite by Layer**: Players can whisper "layer" or "layer X,Y,Z" to request an invite.
 - **AFK Management**: The addon automatically handles inactive players.
 - **Layer Notifications**: The addon shares your layer automatically with the group when necessary.
