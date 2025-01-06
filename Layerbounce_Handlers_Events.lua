@@ -1,129 +1,146 @@
 -- Layerbounce_Handlers_Events.lua
+local addonName, _ = ...
+
 Layerbounce = Layerbounce or {}
 Layerbounce.Handlers = Layerbounce.Handlers or {}
 
-local eventFrame = CreateFrame("Frame", "LayerbounceEventFrame")
-local addonLoaded = false
-
--- Throttling: Only process chat events every 5 seconds
-local lastChatCheckTime = 0
+-- Optional throttling constants and function
 local CHAT_THROTTLE_SECONDS = 5
+local lastChannelCheckTime = 0
+local lastWhisperCheckTime = 0
+
+function Layerbounce.Handlers.ShouldThrottle(lastTime)
+    local now = GetTime()
+    if (now - lastTime) < CHAT_THROTTLE_SECONDS then
+        return true, lastTime
+    else
+        return false, now
+    end
+end
 
 function Layerbounce.Handlers.SetupEventHandlers(addonName)
-    -- Register all events we need
+    local eventFrame = CreateFrame("Frame")
+
+    -- Register events
     eventFrame:RegisterEvent("ADDON_LOADED")
     eventFrame:RegisterEvent("CHAT_MSG_CHANNEL")
     eventFrame:RegisterEvent("CHAT_MSG_WHISPER")
     eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
+    eventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 
     eventFrame:SetScript("OnEvent", function(self, event, ...)
-        -- 1) ADDON_LOADED => Our addon has finished loading
-        if event == "ADDON_LOADED" and not addonLoaded then
+        -- 1) ADDON_LOADED
+        if event == "ADDON_LOADED" then
             local loadedAddonName = ...
-            -- Make sure it's actually "Layerbounce" (or whatever your .toc 'Name' is)
             if loadedAddonName == addonName then
                 self:UnregisterEvent("ADDON_LOADED")
-                addonLoaded = true
 
                 -- Initialize saved variables
-                Layerbounce.Config.InitializeSavedVariables(addonName)
+                local success, err = pcall(function()
+                    Layerbounce.Config.InitializeSavedVariables()
+                end)
+                if not success then
+                    Layerbounce.Handlers.DebugPrintf("Error initializing saved variables: %s", err)
+                else
+                    Layerbounce.Handlers.DebugPrintf(
+                        "Saved variables loaded. isAddonActive: %s",
+                        tostring(_G.LayerbounceSavedVariables.isAddonActive)
+                    )
+                end
 
-                -- Print confirmation to chat
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[Layerbounce] Addon successfully loaded!")
+                -- Initialize modules
+                local modules = {
+                    { name = "Config",   init = Layerbounce.Config.Initialize },
+                    { name = "Handlers", init = Layerbounce.Handlers.Initialize },
+                    { name = "Commands", init = Layerbounce.Commands.Initialize },
+                    { name = "Minimap",  init = Layerbounce.Minimap.Initialize }
+                }
 
-                -- Create the minimap button (assuming you do so here—some folks do it in Layerbounce.lua)
-                local minimapButton = Layerbounce.Main.CreateMinimapButton()
+                for _, module in ipairs(modules) do
+                    local modSuccess, modErr = pcall(module.init)
+                    if modSuccess then
+                        DEFAULT_CHAT_FRAME:AddMessage(
+                            string.format("|cffffa500[Layerbounce] %s module successfully loaded!", module.name)
+                        )
+                    else
+                        DEFAULT_CHAT_FRAME:AddMessage(
+                            string.format("|cffff0000[Layerbounce] Failed to load %s module: %s", module.name, modErr)
+                        )
+                    end
+                end
 
-                -- Check AFK status every 10 seconds
+                -- Final notify
+                pcall(function()
+                    DEFAULT_CHAT_FRAME:AddMessage("|cffffa500[Layerbounce] Addon successfully loaded!")
+                end)
+
+                -- Set up periodic AFK checks
                 C_Timer.NewTicker(10, function()
                     if _G.LayerbounceSavedVariables.isAddonActive then
-                        Layerbounce.Handlers.CheckAFKAndKick()
+                        Layerbounce.Handlers.AutoKickOnNewPlayer()
                     end
                 end)
             end
             return
         end
 
-        -- 2) If the addon is toggled off, skip further event processing
-        if not _G.LayerbounceSavedVariables
-           or not _G.LayerbounceSavedVariables.isAddonActive
-        then
+        -- Skip if addon is disabled
+        if not _G.LayerbounceSavedVariables or not _G.LayerbounceSavedVariables.isAddonActive then
             return
         end
 
-        -- 3) CHAT_MSG_CHANNEL / CHAT_MSG_WHISPER => Check if enough time has passed
-        if event == "CHAT_MSG_CHANNEL" or event == "CHAT_MSG_WHISPER" then
-            local now = GetTime()
-            if (now - lastChatCheckTime) < CHAT_THROTTLE_SECONDS then
-                return
-            end
-            lastChatCheckTime = now
-        end
+        -- Log active events
+        Layerbounce.Handlers.DebugPrintf("Event triggered: %s", event)
 
-        -- 4) Handle specific chat events
-        if event == "CHAT_MSG_CHANNEL" then
+        -- Handle specific events
+        if event == "GROUP_ROSTER_UPDATE" then
+            -- Example usage: update party member tracking
+            Layerbounce.Handlers.TrackPartyMembers()
+        elseif event == "CHAT_MSG_CHANNEL" then
+            local shouldThrottle
+            shouldThrottle, lastChannelCheckTime = Layerbounce.Handlers.ShouldThrottle(lastChannelCheckTime)
+            if shouldThrottle then return end
+
             local msg, sender = ...
-            local layerExtracted = Layerbounce.Handlers.ExtractLayerText()
-            if layerExtracted then
-                local valid, numbers = Layerbounce.Handlers.CheckIfValidLayerMessage(msg)
-                if valid then
-                    local currentLayer = Layerbounce.Handlers.layerText
-                    -- If "layer" has no numbers, always invite
-                    if #numbers == 0 then
-                        Layerbounce.Handlers.DebugPrintf("Detected 'layer' from %s => invite.", sender)
-                        Layerbounce.Handlers.InviteAndNotify(sender)
-                    else
-                        -- Only invite if our layer matches one of the numbers
-                        for _, num in ipairs(numbers) do
-                            if tostring(num) == tostring(currentLayer) then
-                                Layerbounce.Handlers.DebugPrintf(
-                                    "Detected 'layer %s' from %s => matches our layer => invite",
-                                    num, sender
-                                )
-                                Layerbounce.Handlers.InviteAndNotify(sender)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
-
+            Layerbounce.Handlers.HandleChatMessage(event, msg, sender, ...)
         elseif event == "CHAT_MSG_WHISPER" then
-            local msg, sender = ...
-            local layerExtracted = Layerbounce.Handlers.ExtractLayerText()
-            if layerExtracted then
-                local valid, numbers = Layerbounce.Handlers.CheckIfValidLayerMessage(msg)
-                if valid then
-                    local currentLayer = Layerbounce.Handlers.layerText
-                    if #numbers == 0 then
-                        Layerbounce.Handlers.DebugPrintf("Whispered 'layer' from %s => invite.", sender)
-                        Layerbounce.Handlers.InviteAndNotify(sender)
-                    else
-                        for _, num in ipairs(numbers) do
-                            if tostring(num) == tostring(currentLayer) then
-                                Layerbounce.Handlers.DebugPrintf(
-                                    "Whispered 'layer %s' from %s => matches our layer => invite",
-                                    num, sender
-                                )
-                                Layerbounce.Handlers.InviteAndNotify(sender)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
+            local shouldThrottle
+            shouldThrottle, lastWhisperCheckTime = Layerbounce.Handlers.ShouldThrottle(lastWhisperCheckTime)
+            if shouldThrottle then return end
 
+            local msg, sender = ...
+            Layerbounce.Handlers.HandleChatMessage(event, msg, sender, ...)
         elseif event == "CHAT_MSG_SYSTEM" then
             local sysMsg = ...
-            -- Example: "X declines your group invitation."
-            local declinedPlayer = string.match(sysMsg, "^(.*) declines your group invitation")
-            if declinedPlayer then
-                Layerbounce.Handlers.DebugPrintf(
-                    "Detected a declined invite from: %s.", 
-                    declinedPlayer
-                )
-                Layerbounce.Handlers.HandleDeclinedInvite(declinedPlayer)
-            end
+            Layerbounce.Handlers.HandleSystemMessage(sysMsg)
         end
     end)
+end
+
+-------------------------------------------------------------------------------
+-- Helper: Handle Chat Messages
+-------------------------------------------------------------------------------
+function Layerbounce.Handlers.HandleChatMessage(event, msg, sender, ...)
+    -- Filter by channel
+    if event == "CHAT_MSG_CHANNEL" then
+        local channelName = select(9, ...)
+        if not channelName or channelName:lower() ~= "layer" then
+            Layerbounce.Handlers.DebugPrintf(
+                "Message from %s ignored. Channel '%s' does not match 'layer'.", 
+                sender, channelName or "Unknown"
+            )
+            return
+        end
+    end
+
+    -- Validate the message
+    local isValid = Layerbounce.Handlers.CheckIfValidLayerMessage(msg)
+    if not isValid then
+        Layerbounce.Handlers.DebugPrintf("Message from %s ignored. Does not contain 'layer'.", sender)
+        return
+    end
+
+    -- Send the invite
+    Layerbounce.Handlers.DebugPrintf("%s 'layer' from %s => invite.", event, sender)
+    Layerbounce.Handlers.InviteAndNotify(sender)
 end
