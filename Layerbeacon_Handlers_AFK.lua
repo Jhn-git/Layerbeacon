@@ -7,26 +7,32 @@ Layerbeacon.Handlers = Layerbeacon.Handlers or {}
 -- 1. Track Party Members
 function Layerbeacon.Handlers.TrackPartyMembers()
     local currentTime = GetTime()
-    local newPartyMembers = {}
 
-    for i = 1, GetNumGroupMembers() do
-        local name, _, _, _, _, _, _, _, _, _, _ = GetRaidRosterInfo(i)
-        if name then
-            -- Keep existing join time or set current time for new members
-            newPartyMembers[name] = Layerbeacon.Handlers.partyMembers[name] or currentTime
-        end
+    -- Get current party members
+    local currentParty = Layerbeacon.Handlers.GetCurrentPartyMembers()
+
+    -- Update join times
+    local updatedParty = Layerbeacon.Handlers.UpdateJoinTimes(
+        Layerbeacon.Handlers.partyMembers,
+        currentParty,
+        currentTime
+    )
+
+    -- Detect players who left
+    local playersWhoLeft = Layerbeacon.Handlers.GetPlayersWhoLeft(
+        Layerbeacon.Handlers.partyMembers,
+        updatedParty
+    )
+
+    for _, playerName in ipairs(playersWhoLeft) do
+        Layerbeacon.Handlers.DebugPrintf("Player %s left. Removing from tracking.", playerName)
+        Layerbeacon.Handlers.leftPartyList[playerName] = currentTime
     end
 
-    -- Check for players who left
-    for playerName in pairs(Layerbeacon.Handlers.partyMembers) do
-        if not newPartyMembers[playerName] then
-            Layerbeacon.Handlers.DebugPrintf("Player %s left. Removing from tracking.", playerName)
-            Layerbeacon.Handlers.leftPartyList[playerName] = currentTime
-        end
-    end
-
-    Layerbeacon.Handlers.partyMembers = newPartyMembers
+    -- Update the party members list
+    Layerbeacon.Handlers.partyMembers = updatedParty
 end
+
 
 -- 2. Auto-Kick on New Player Join
 function Layerbeacon.Handlers.AutoKickOnNewPlayer()
@@ -58,13 +64,6 @@ function Layerbeacon.Handlers.KickPlayer(playerName)
     if InCombatLockdown() then
         Layerbeacon.Handlers.DebugPrintf("Cannot kick %s: Combat lockdown active.", playerName)
         return
-    end
-
-    -- Use a secure button to kick the player
-    if not kickButton then
-        -- Create a secure button if needed
-        kickButton = CreateFrame("Button", "LayerbeaconSecureKickButton", UIParent, "SecureActionButtonTemplate")
-        kickButton:SetAttribute("type", "macro")
     end
 
     kickButton:SetAttribute("macrotext", "/uninvite " .. playerName)

@@ -61,55 +61,6 @@ function Layerbeacon.Handlers.ExtractLayerText()
     return false
 end
 
--------------------------------------------------------------------------------
--- Utility: IsPlayerInOurGroup
--------------------------------------------------------------------------------
-function Layerbeacon.Handlers.IsPlayerInOurGroup(playerName)
-    local function checkGroupUnits(unitPrefix, maxUnits)
-        for i = 1, maxUnits do
-            local unitID = unitPrefix .. i
-            if UnitExists(unitID) and GetUnitName(unitID, true) == playerName then
-                return true
-            end
-        end
-        return false
-    end
-
-    if IsInRaid(LE_PARTY_CATEGORY_HOME) then
-        return checkGroupUnits("raid", GetNumGroupMembers())
-    elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        -- We also check if the "player" unit is the same name
-        if UnitExists("player") and GetUnitName("player", true) == playerName then
-            return true
-        end
-        return checkGroupUnits("party", 4)
-    end
-
-    return false
-end
-
--------------------------------------------------------------------------------
--- Utility: WaitForPlayerToJoin
--------------------------------------------------------------------------------
-function Layerbeacon.Handlers.WaitForPlayerToJoin(playerName, retries)
-    retries = retries or 0
-    if retries > 10 then
-        Layerbeacon.Handlers.DebugPrintf("Player %s did not join after 10s, giving up.", playerName)
-        return
-    end
-
-    if Layerbeacon.Handlers.IsPlayerInOurGroup(playerName) then
-        if Layerbeacon.Handlers.ExtractLayerText() then
-            Layerbeacon.Handlers.DebugPrintf("Announcing layer %s to party.", Layerbeacon.Handlers.layerText)
-            Layerbeacon.Handlers.lastNotificationTime = GetTime()
-            SendChatMessage("[Layerbeacon] layer " .. Layerbeacon.Handlers.layerText, "PARTY")
-        end
-    else
-        C_Timer.After(1, function()
-            Layerbeacon.Handlers.WaitForPlayerToJoin(playerName, retries + 1)
-        end)
-    end
-end
 
 -------------------------------------------------------------------------------
 -- Utility: Check Layer Message
@@ -129,11 +80,30 @@ function Layerbeacon.Handlers.CheckIfValidLayerMessage(msg)
     return false
 end
 
+
+--------------------------------------------------------------------------------
+-- Utility: Get Current Party Members
+--------------------------------------------------------------------------------
+function Layerbeacon.Handlers.GetCurrentPartyMembers()
+    local members = {}
+    for i = 1, GetNumGroupMembers(LE_PARTY_CATEGORY_HOME) do
+        local name = GetRaidRosterInfo(i)
+        if name then
+            members[name] = true
+        end
+    end
+    return members
+end
+
+
+
 -------------------------------------------------------------------------------
 -- Initialization Stub
 -------------------------------------------------------------------------------
 function Layerbeacon.Handlers.Initialize()
-    -- Any one-time logic for your “core” Handlers can go here.
-    -- E.g. setting up any tables, hooking certain functions, etc.
+    if not kickButton then
+        kickButton = CreateFrame("Button", "LayerbeaconSecureKickButton", UIParent, "SecureActionButtonTemplate")
+        kickButton:SetAttribute("type", "macro")
+    end
     Layerbeacon.Handlers.DebugPrintf("Layerbeacon.Handlers.Initialize called.")
 end

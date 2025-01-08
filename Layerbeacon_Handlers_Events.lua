@@ -121,7 +121,7 @@ end
 -- Helper: Handle Chat Messages
 -------------------------------------------------------------------------------
 function Layerbeacon.Handlers.HandleChatMessage(event, msg, sender, ...)
-    -- Filter by channel
+    -- Handle channel-specific messages
     if event == "CHAT_MSG_CHANNEL" then
         local channelName = select(9, ...)
         if not channelName or channelName:lower() ~= "layer" then
@@ -131,16 +131,51 @@ function Layerbeacon.Handlers.HandleChatMessage(event, msg, sender, ...)
             )
             return
         end
-    end
 
-    -- Validate the message
-    local isValid = Layerbeacon.Handlers.CheckIfValidLayerMessage(msg)
-    if not isValid then
-        Layerbeacon.Handlers.DebugPrintf("Message from %s ignored. Does not contain 'layer'.", sender)
+        -- Validate the message for channels
+        local isValid = Layerbeacon.Handlers.CheckIfValidLayerMessage(msg)
+        if not isValid then
+            Layerbeacon.Handlers.DebugPrintf("Message from %s ignored. Does not contain 'layer'.", sender)
+            return
+        end
+
+        -- If valid, send the layer info via whisper
+        Layerbeacon.Handlers.WhisperLayerInfo(sender)
+    elseif event == "CHAT_MSG_WHISPER" then
+        -- Handle whispers directly
+        Layerbeacon.Handlers.HandleWhisper(sender, msg)
+    else
+        Layerbeacon.Handlers.DebugPrintf("Unhandled event type: %s", event)
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Handle All System Messages
+--------------------------------------------------------------------------------
+function Layerbeacon.Handlers.HandleSystemMessage(sysMsg)
+    -- Match party join message
+    local joinedPlayer = string.match(sysMsg, "^(.*) joins the party")
+    if joinedPlayer then
+        Layerbeacon.Handlers.DebugPrintf("System Message: Player %s joined the party.", joinedPlayer)
+        -- Notify other scripts about the join
+        if Layerbeacon.Handlers.OnPlayerJoined then
+            Layerbeacon.Handlers.OnPlayerJoined(joinedPlayer)
+        end
         return
     end
 
-    -- Send the invite
-    Layerbeacon.Handlers.DebugPrintf("%s 'layer' from %s => invite.", event, sender)
-    Layerbeacon.Handlers.InviteAndNotify(sender)
+    -- Match invite declined message
+    local declinedPlayer = string.match(sysMsg, "^(.*) declines your group invitation")
+    if declinedPlayer then
+        Layerbeacon.Handlers.DebugPrintf("System Message: Player %s declined the invite.", declinedPlayer)
+        -- Notify other scripts about the decline
+        if Layerbeacon.Handlers.OnInviteDeclined then
+            Layerbeacon.Handlers.OnInviteDeclined(declinedPlayer)
+        end
+        return
+    end
+
+    -- Log unhandled system messages
+    Layerbeacon.Handlers.DebugPrintf("Unhandled system message: %s", sysMsg)
 end
+

@@ -5,113 +5,105 @@ Layerbeacon = Layerbeacon or {}
 Layerbeacon.Handlers = Layerbeacon.Handlers or {}
 
 --------------------------------------------------------------------------------
--- InviteAndNotify
+-- Whisper Layer Info Flow
 --------------------------------------------------------------------------------
-function Layerbeacon.Handlers.InviteAndNotify(sender)
-    Layerbeacon.Handlers.DebugPrintf("InviteAndNotify called for sender: %s", sender)
+-- 1. Whisper Layer Info: Send layer details and instructions to a player
+function Layerbeacon.Handlers.WhisperLayerInfo(sender)
+    Layerbeacon.Handlers.DebugPrintf("WhisperLayerInfo called for sender: %s", sender)
 
     -- Skip if the addon is disabled
     if not _G.LayerbeaconSavedVariables.isAddonActive then
-        Layerbeacon.Handlers.DebugPrintf("Addon is inactive. Skipping invite for %s.", sender)
-        return
-    end
-
-    -- Skip if the sender is on cooldown for leaving or declining
-    if Layerbeacon.Handlers.IsOnLeaveOrDeclineCooldown(sender) then
-        Layerbeacon.Handlers.DebugPrintf("%s is on cooldown. Skipping invite.", sender)
+        Layerbeacon.Handlers.DebugPrintf("Addon is inactive. Skipping interaction for %s.", sender)
         return
     end
 
     -- Skip if the party is full
     if IsInGroup(LE_PARTY_CATEGORY_HOME) and GetNumGroupMembers() >= 5 then
-        Layerbeacon.Handlers.DebugPrintf("Party is full. Cannot invite %s.", sender)
+        Layerbeacon.Handlers.DebugPrintf("Party is full. Cannot interact with %s.", sender)
         return
     end
 
-    -- Invite the player
-    local playerName = string.match(sender, "([^%-]+)") or sender -- Extract just the name if realm is included
-    Layerbeacon.Handlers.DebugPrintf("Inviting %s now...", playerName)
-    C_PartyInfo.InviteUnit(playerName)
+    -- Validate layer text
+    local layer = Layerbeacon.Handlers.layerText or "Unknown"
+    if layer == "Unknown" then
+        Layerbeacon.Handlers.DebugPrintf("Warning: Layer text is not properly set!")
+    end
 
-    -- Send a whisper with layer information
-    local layerMessage = "[Layerbeacon] Layer " .. (Layerbeacon.Handlers.layerText or "Unknown") .. ". Invite sent."
+    -- Send a whisper with clear instructions
+    local playerName = string.match(sender, "([^%-]+)") or sender
+    local layerMessage = "[Layerbeacon] I am on Layer " .. layer .. 
+                         ". Reply with 'invite " .. layer .. "' if you want to join."
     SendChatMessage(layerMessage, "WHISPER", nil, playerName)
     Layerbeacon.Handlers.DebugPrintf("Sent whisper to %s: %s", playerName, layerMessage)
+end
 
-    -- Temporarily add the player to a pending invite list
-    Layerbeacon.Handlers.pendingInviteList = Layerbeacon.Handlers.pendingInviteList or {}
-    Layerbeacon.Handlers.pendingInviteList[playerName] = GetTime()
+
+--------------------------------------------------------------------------------
+-- Whisper Handling Flow
+--------------------------------------------------------------------------------
+-- 2. Handle Incoming Whisper: Process whispers and send invites if the message is correct
+function Layerbeacon.Handlers.HandleWhisper(sender, message)
+    local playerName = string.match(sender, "([^%-]+)") or sender -- Extract the player name
+    local expectedLayer = tostring(Layerbeacon.Handlers.layerText or "Unknown") -- Ensure layer is treated as a string
+
+    -- Parse the whisper for the "invite" command and the layer number
+    local command, layer = string.match(message:lower(), "^(invite)%s+(%d+)$")
+    if command == "invite" and layer == expectedLayer then
+        Layerbeacon.Handlers.DebugPrintf("Player %s correctly requested to join Layer %s.", playerName, layer)
+        C_PartyInfo.InviteUnit(playerName) -- Send the invite
+        Layerbeacon.Handlers.DebugPrintf("Invited %s to the group.", playerName)
+    else
+        Layerbeacon.Handlers.DebugPrintf(
+            "Player %s sent an incorrect or unrecognized message: '%s'. Expected 'invite %s'.", 
+            playerName, message, expectedLayer
+        )
+    end
 end
 
 --------------------------------------------------------------------------------
--- Handle System Messages
+-- Decline Handling Flow
 --------------------------------------------------------------------------------
-function Layerbeacon.Handlers.HandleSystemMessage(sysMsg)
-    -- Check if the message indicates a player joined the party
-    local joinedPlayer = string.match(sysMsg, "^(.*) joins the party")
-    if joinedPlayer then
-        Layerbeacon.Handlers.DebugPrintf("Player %s joined the party.", joinedPlayer)
-
-        -- Move the player from pending to active tracking
-        if Layerbeacon.Handlers.pendingInviteList and Layerbeacon.Handlers.pendingInviteList[joinedPlayer] then
-            local joinTime = Layerbeacon.Handlers.pendingInviteList[joinedPlayer]
-            Layerbeacon.Handlers.partyMembers[joinedPlayer] = joinTime
-            Layerbeacon.Handlers.pendingInviteList[joinedPlayer] = nil
-            Layerbeacon.Handlers.DebugPrintf("Added %s to partyMembers tracking.", joinedPlayer)
-        end
-        return
-    end
-
-    -- Check if the message indicates a declined invite
-    local declinedPlayer = string.match(sysMsg, "^(.*) declines your group invitation")
-    if declinedPlayer then
-        Layerbeacon.Handlers.DebugPrintf("Detected a declined invite from: %s.", declinedPlayer)
-        Layerbeacon.Handlers.HandleDeclinedInvite(declinedPlayer)
-        return
-    end
-
-    -- Log unhandled system messages for debugging
-    Layerbeacon.Handlers.DebugPrintf("Unhandled system message: %s", sysMsg)
-end
-
---------------------------------------------------------------------------------
--- HandleDeclinedInvite
---------------------------------------------------------------------------------
+-- 4. Handle Declined Invite: Add player to cooldown and remove from pending invites
 function Layerbeacon.Handlers.HandleDeclinedInvite(sender)
     local currentTime = GetTime()
     local cooldown = Layerbeacon.Config.LEAVE_DECLINE_COOLDOWN or 1200
 
-    -- Add the sender to the declined invite list
+    -- Track declined invite
+    Layerbeacon.Handlers.declinedInviteList = Layerbeacon.Handlers.declinedInviteList or {}
     Layerbeacon.Handlers.declinedInviteList[sender] = currentTime
     Layerbeacon.Handlers.DebugPrintf("Player %s declined the invite. Added to cooldown.", sender)
 
-    -- Remove the player from pending tracking
-    if Layerbeacon.Handlers.pendingInviteList and Layerbeacon.Handlers.pendingInviteList[sender] then
+    -- Remove from pending invites
+    if Layerbeacon.Handlers.pendingInviteList then
         Layerbeacon.Handlers.pendingInviteList[sender] = nil
         Layerbeacon.Handlers.DebugPrintf("Removed %s from pendingInviteList.", sender)
     end
 end
 
 --------------------------------------------------------------------------------
--- Check Cooldowns for Leaving or Declining
+-- Cooldown Flow
 --------------------------------------------------------------------------------
+-- 5. Check Cooldowns: Determine if a player is on leave or decline cooldown
 function Layerbeacon.Handlers.IsOnLeaveOrDeclineCooldown(sender)
-    local currentTime = GetTime() -- Use GetTime() for session-relative checks
+    local currentTime = GetTime()
     local cooldown = Layerbeacon.Config.LEAVE_DECLINE_COOLDOWN or 1200
 
-    -- Check leave cooldown
-    local leftTimestamp = Layerbeacon.Handlers.leftPartyList[sender]
-    if leftTimestamp and (currentTime - leftTimestamp) < cooldown then
-        local remaining = cooldown - (currentTime - leftTimestamp)
-        Layerbeacon.Handlers.DebugPrintf("Player %s is on leave cooldown. Remaining: %.1f seconds.", sender, remaining)
-        return true
+    -- Helper to check if sender is still on cooldown
+    local function isOnCooldown(list, label)
+        local timestamp = list and list[sender]
+        if timestamp and (currentTime - timestamp) < cooldown then
+            Layerbeacon.Handlers.DebugPrintf(
+                "Player %s is on %s cooldown. Remaining: %.1f seconds.",
+                sender, label, cooldown - (currentTime - timestamp)
+            )
+            return true
+        end
+        return false
     end
 
-    -- Check decline cooldown
-    local declinedTimestamp = Layerbeacon.Handlers.declinedInviteList[sender]
-    if declinedTimestamp and (currentTime - declinedTimestamp) < cooldown then
-        local remaining = cooldown - (currentTime - declinedTimestamp)
-        Layerbeacon.Handlers.DebugPrintf("Player %s is on decline cooldown. Remaining: %.1f seconds.", sender, remaining)
+    -- Check both leave and decline cooldowns
+    if isOnCooldown(Layerbeacon.Handlers.leftPartyList, "leave") or 
+       isOnCooldown(Layerbeacon.Handlers.declinedInviteList, "decline") then
         return true
     end
 
