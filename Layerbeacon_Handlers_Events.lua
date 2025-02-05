@@ -154,7 +154,7 @@ end
 --------------------------------------------------------------------------------
 function Layerbeacon.Handlers.HandleSystemMessage(sysMsg)
     -- Match party join message
-    local joinedPlayer = string.match(sysMsg, "^(.*) joins the party")
+    local joinedPlayer = string.match(sysMsg, string.format( ERR_JOINED_GROUP_S, "(%a+)"))
     if joinedPlayer then
         Layerbeacon.Handlers.DebugPrintf("System Message: Player %s joined the party.", joinedPlayer)
         -- Notify other scripts about the join
@@ -165,7 +165,7 @@ function Layerbeacon.Handlers.HandleSystemMessage(sysMsg)
     end
 
     -- Match invite declined message
-    local declinedPlayer = string.match(sysMsg, "^(.*) declines your group invitation")
+    local declinedPlayer = string.match(sysMsg, string.format( ERR_DECLINE_GROUP_S, "(%a+)"))
     if declinedPlayer then
         Layerbeacon.Handlers.DebugPrintf("System Message: Player %s declined the invite.", declinedPlayer)
         -- Notify other scripts about the decline
